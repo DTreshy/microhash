@@ -10,8 +10,7 @@ import (
 
 const (
 	// TopWeight is the top weight that one entry might set.
-	TopWeight = 100
-
+	TopWeight   = 100
 	minReplicas = 100
 	prime       = 16777619
 )
@@ -71,6 +70,7 @@ func (h *ConsistentHash) AddWithReplicas(node any, replicas int) {
 	}
 
 	nodeRepr := repr(node)
+
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	h.addNode(nodeRepr)
@@ -118,6 +118,7 @@ func (h *ConsistentHash) Get(v any) (any, bool) {
 	default:
 		innerIndex := h.hashFunc([]byte(innerRepr(v)))
 		pos := int(innerIndex % uint64(len(nodes)))
+
 		return nodes[pos], true
 	}
 }
@@ -138,9 +139,11 @@ func (h *ConsistentHash) Remove(node any) {
 		index := sort.Search(len(h.keys), func(i int) bool {
 			return h.keys[i] >= hash
 		})
+
 		if index < len(h.keys) && h.keys[index] == hash {
 			h.keys = append(h.keys[:index], h.keys[index+1:]...)
 		}
+
 		h.removeRingNode(hash, nodeRepr)
 	}
 
@@ -150,16 +153,19 @@ func (h *ConsistentHash) Remove(node any) {
 func (h *ConsistentHash) removeRingNode(hash uint64, nodeRepr string) {
 	if nodes, ok := h.ring[hash]; ok {
 		newNodes := nodes[:0]
+
 		for _, x := range nodes {
 			if repr(x) != nodeRepr {
 				newNodes = append(newNodes, x)
 			}
 		}
+
 		if len(newNodes) > 0 {
 			h.ring[hash] = newNodes
-		} else {
-			delete(h.ring, hash)
+			return
 		}
+
+		delete(h.ring, hash)
 	}
 }
 
@@ -187,8 +193,7 @@ func repr(node any) string {
 	}
 
 	// if func (v *Type) String() string, we can't use Elem()
-	switch vt := node.(type) {
-	case fmt.Stringer:
+	if vt, ok := node.(fmt.Stringer); ok {
 		return vt.String()
 	}
 

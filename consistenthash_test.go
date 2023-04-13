@@ -22,8 +22,11 @@ func calcEntropy(m map[any]int) float64 {
 		return 1
 	}
 
-	var entropy float64
-	var total int
+	var (
+		entropy float64
+		total   int
+	)
+
 	for _, v := range m {
 		total += v
 	}
@@ -33,6 +36,7 @@ func calcEntropy(m map[any]int) float64 {
 		if proba < epsilon {
 			proba = epsilon
 		}
+
 		entropy -= proba * math.Log2(proba)
 	}
 
@@ -53,6 +57,7 @@ func BenchmarkConsistentHashGet(b *testing.B) {
 func TestConsistentHash(t *testing.T) {
 	ch := NewCustomConsistentHash(0, nil)
 	val, ok := ch.Get("any")
+
 	assert.False(t, ok)
 	assert.Nil(t, val)
 
@@ -61,6 +66,7 @@ func TestConsistentHash(t *testing.T) {
 	}
 
 	keys := make(map[string]int)
+
 	for i := 0; i < requestSize; i++ {
 		key, ok := ch.Get(requestSize + i)
 		assert.True(t, ok)
@@ -71,6 +77,7 @@ func TestConsistentHash(t *testing.T) {
 	for k, v := range keys {
 		mi[k] = v
 	}
+
 	entropy := calcEntropy(mi)
 	assert.True(t, entropy > .95)
 }
@@ -82,19 +89,24 @@ func TestConsistentHashIncrementalTransfer(t *testing.T) {
 		for i := 0; i < keySize; i++ {
 			ch.Add(prefix + strconv.Itoa(i))
 		}
+
 		return ch
 	}
 
 	originCh := create()
 	keys := make(map[int]string, requestSize)
+
 	for i := 0; i < requestSize; i++ {
 		key, ok := originCh.Get(requestSize + i)
 		assert.True(t, ok)
 		assert.NotNil(t, key)
-		keys[i] = key.(string)
+
+		keys[i], ok = key.(string)
+		assert.True(t, ok)
 	}
 
 	node := fmt.Sprintf("%s%d", prefix, keySize)
+
 	for i := 0; i < 10; i++ {
 		laterCh := create()
 		laterCh.AddWithWeight(node, 10*(i+1))
@@ -103,7 +115,9 @@ func TestConsistentHashIncrementalTransfer(t *testing.T) {
 			key, ok := laterCh.Get(requestSize + j)
 			assert.True(t, ok)
 			assert.NotNil(t, key)
-			value := key.(string)
+
+			value, ok := key.(string)
+			assert.True(t, ok)
 			assert.True(t, value == keys[j] || value == node)
 		}
 	}
@@ -112,7 +126,9 @@ func TestConsistentHashIncrementalTransfer(t *testing.T) {
 func TestConsistentHashTransferOnFailure(t *testing.T) {
 	index := 41
 	keys, newKeys := getKeysBeforeAndAfterFailure(t, "localhost:", index)
+
 	var transferred int
+
 	for k, v := range newKeys {
 		if v != keys[k] {
 			transferred++
@@ -127,6 +143,7 @@ func TestConsistentHashLeastTransferOnFailure(t *testing.T) {
 	prefix := "localhost:"
 	index := 41
 	keys, newKeys := getKeysBeforeAndAfterFailure(t, prefix, index)
+
 	for k, v := range keys {
 		newV := newKeys[k]
 		if v != prefix+strconv.Itoa(index) {
@@ -137,9 +154,11 @@ func TestConsistentHashLeastTransferOnFailure(t *testing.T) {
 
 func TestConsistentHash_Remove(t *testing.T) {
 	ch := NewConsistentHash()
+
 	ch.Add("first")
 	ch.Add("second")
 	ch.Remove("first")
+
 	for i := 0; i < 100; i++ {
 		val, ok := ch.Get(i)
 		assert.True(t, ok)
@@ -149,9 +168,11 @@ func TestConsistentHash_Remove(t *testing.T) {
 
 func TestConsistentHash_RemoveInterface(t *testing.T) {
 	const key = "any"
+
 	ch := NewConsistentHash()
 	node1 := newMockNode(key, 1)
 	node2 := newMockNode(key, 2)
+
 	ch.AddWithWeight(node1, 80)
 	ch.AddWithWeight(node2, 50)
 	assert.Equal(t, 1, len(ch.nodes))
@@ -161,29 +182,36 @@ func TestConsistentHash_RemoveInterface(t *testing.T) {
 	assert.Equal(t, 2, node.(*mockNode).id)
 }
 
-func getKeysBeforeAndAfterFailure(t *testing.T, prefix string, index int) (map[int]string, map[int]string) {
+func getKeysBeforeAndAfterFailure(t *testing.T, prefix string, index int) (keys, newkeys map[int]string) {
 	ch := NewConsistentHash()
 	for i := 0; i < keySize; i++ {
 		ch.Add(prefix + strconv.Itoa(i))
 	}
 
-	keys := make(map[int]string, requestSize)
+	keys = make(map[int]string, requestSize)
+
 	for i := 0; i < requestSize; i++ {
 		key, ok := ch.Get(requestSize + i)
 		assert.True(t, ok)
 		assert.NotNil(t, key)
-		keys[i] = key.(string)
+
+		keys[i], ok = key.(string)
+		assert.True(t, ok)
 	}
 
-	remove := fmt.Sprintf("%s%d", prefix, index)
-	ch.Remove(remove)
 	newKeys := make(map[int]string, requestSize)
+	remove := fmt.Sprintf("%s%d", prefix, index)
+
+	ch.Remove(remove)
+
 	for i := 0; i < requestSize; i++ {
 		key, ok := ch.Get(requestSize + i)
 		assert.True(t, ok)
 		assert.NotNil(t, key)
 		assert.NotEqual(t, remove, key)
-		newKeys[i] = key.(string)
+
+		newKeys[i], ok = key.(string)
+		assert.True(t, ok)
 	}
 
 	return keys, newKeys
