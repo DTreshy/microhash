@@ -16,6 +16,7 @@ func Hash(data []byte) uint64 {
 func Md5(data []byte) []byte {
 	digest := md5.New()
 	digest.Write(data)
+
 	return digest.Sum(nil)
 }
 
