@@ -108,19 +108,17 @@ func (h *ConsistentHash) Get(v any) (any, bool) {
 	index := sort.Search(len(h.keys), func(i int) bool {
 		return h.keys[i] >= hash
 	}) % len(h.keys)
-
 	nodes := h.ring[h.keys[index]]
-	switch len(nodes) {
-	case 0:
-		return nil, false
-	case 1:
-		return nodes[0], true
-	default:
-		innerIndex := h.hashFunc([]byte(innerRepr(v)))
-		pos := int(innerIndex % uint64(len(nodes)))
 
-		return nodes[pos], true
+	lenNodes := len(nodes)
+	if lenNodes == 1 {
+		return nodes[0], true
 	}
+
+	innerIndex := h.hashFunc([]byte(innerRepr(v)))
+	pos := int(innerIndex % uint64(lenNodes))
+
+	return nodes[pos], true
 }
 
 // Remove removes the given node from h.
@@ -219,8 +217,6 @@ func reprOfValue(val reflect.Value) string {
 		return strconv.FormatFloat(float64(vt), 'f', -1, 32)
 	case float64:
 		return strconv.FormatFloat(vt, 'f', -1, 64)
-	case fmt.Stringer:
-		return vt.String()
 	case int8:
 		return strconv.Itoa(int(vt))
 	case int16:
