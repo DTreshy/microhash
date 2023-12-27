@@ -17,6 +17,16 @@ const (
 const epsilon = 1e-6
 const localhostPrefix = "localhost:"
 
+type stringer struct {
+	Value int
+	Label string
+}
+
+// Implementing the String() method for fmt.Stringer
+func (m stringer) String() string {
+	return fmt.Sprintf("Value: %d, Label: %s", m.Value, m.Label)
+}
+
 // CalcEntropy calculates the entropy of m.
 func calcEntropy(m map[any]int) float64 {
 	if len(m) == 0 || len(m) == 1 {
@@ -182,15 +192,71 @@ func TestConsistentHashLeastTransferOnFailure(t *testing.T) {
 
 func TestConsistentHash_Remove(t *testing.T) {
 	ch := New()
+	firstNode := "First"
+	secondNode := "Second"
 
-	ch.Add("first")
-	ch.Add("second")
-	ch.Remove("first")
+	ch.Add(firstNode)
+	ch.Add(secondNode)
+	ch.Remove(firstNode)
 
 	for i := 0; i < 100; i++ {
 		val, ok := ch.Get(i)
 		assert.True(t, ok)
-		assert.Equal(t, "second", val)
+		assert.Equal(t, secondNode, val)
+	}
+
+	ch.Remove(secondNode)
+
+	val, ok := ch.Get(true)
+
+	assert.False(t, ok)
+	assert.Equal(t, nil, val)
+}
+
+func TestConsistentHash_Get(t *testing.T) {
+	ch := New()
+	node := "Node"
+
+	type testCase struct {
+		Name     string
+		Value    any
+		Expected string
+	}
+
+	tests := []testCase{
+		{"Get nil", nil, node},
+		{"Get int", int(1), node},
+		{"Get string", "string", node},
+		{"Get bool", true, node},
+		{"Get float32", float32(1.2), node},
+		{"Get float64", float64(1.22), node},
+		{"Get fmt.Stringer", stringer{Value: 5, Label: "fmt.stringer"}, node},
+		{"Get int8", int8(1), node},
+		{"Get int16", int16(1), node},
+		{"Get int32", int32(1), node},
+		{"Get int64", int64(1), node},
+		{"Get uint", uint(1), node},
+		{"Get uint8", uint8(1), node},
+		{"Get uint16", uint16(1), node},
+		{"Get uint32", uint32(1), node},
+		{"Get uint64", uint64(1), node},
+		{"Get []byte", []byte("string"), node},
+		{"Get error", fmt.Errorf("string"), node},
+	}
+
+	// test Get on hash with no nodes
+	val, ok := ch.Get(1)
+	assert.False(t, ok)
+	assert.Equal(t, nil, val)
+
+	ch.Add(node)
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			val, ok := ch.Get(tt.Value)
+			assert.True(t, ok)
+			assert.Equal(t, tt.Expected, val)
+		})
 	}
 }
 
