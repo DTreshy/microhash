@@ -1,4 +1,4 @@
-package hash
+package microhash
 
 import (
 	"fmt"
@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	// TopWeight is the top weight that one entry might set.
-	TopWeight   = 100
+	// MaxWeight is the max weight that one entry might set.
+	MaxWeight   = 100
 	minReplicas = 100
 	prime       = 16777619
 )
@@ -30,13 +30,13 @@ type (
 	}
 )
 
-// NewConsistentHash returns a ConsistentHash.
-func NewConsistentHash() *ConsistentHash {
-	return NewCustomConsistentHash(minReplicas, Hash)
+// New returns a ConsistentHash.
+func New() *ConsistentHash {
+	return NewWithCustomHash(minReplicas, Hash)
 }
 
-// NewCustomConsistentHash returns a ConsistentHash with given replicas and hash func.
-func NewCustomConsistentHash(replicas int, fn Func) *ConsistentHash {
+// NewWithCustomHash returns a ConsistentHash with given replicas and hash func.
+func NewWithCustomHash(replicas int, fn Func) *ConsistentHash {
 	if replicas < minReplicas {
 		replicas = minReplicas
 	}
@@ -91,7 +91,7 @@ func (h *ConsistentHash) AddWithReplicas(node any, replicas int) {
 func (h *ConsistentHash) AddWithWeight(node any, weight int) {
 	// don't need to make sure weight not larger than TopWeight,
 	// because AddWithReplicas makes sure replicas cannot be larger than h.replicas
-	replicas := h.replicas * weight / TopWeight
+	replicas := h.replicas * weight / MaxWeight
 	h.AddWithReplicas(node, replicas)
 }
 
@@ -207,6 +207,10 @@ func repr(node any) string {
 
 func reprOfValue(val reflect.Value) string {
 	switch vt := val.Interface().(type) {
+	case int:
+		return strconv.Itoa(vt)
+	case string:
+		return vt
 	case bool:
 		return strconv.FormatBool(vt)
 	case error:
@@ -217,8 +221,6 @@ func reprOfValue(val reflect.Value) string {
 		return strconv.FormatFloat(vt, 'f', -1, 64)
 	case fmt.Stringer:
 		return vt.String()
-	case int:
-		return strconv.Itoa(vt)
 	case int8:
 		return strconv.Itoa(int(vt))
 	case int16:
@@ -227,8 +229,6 @@ func reprOfValue(val reflect.Value) string {
 		return strconv.Itoa(int(vt))
 	case int64:
 		return strconv.FormatInt(vt, 10)
-	case string:
-		return vt
 	case uint:
 		return strconv.FormatUint(uint64(vt), 10)
 	case uint8:

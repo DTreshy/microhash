@@ -1,4 +1,4 @@
-package hash
+package microhash
 
 import (
 	"crypto/md5"
