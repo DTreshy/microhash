@@ -15,6 +15,7 @@ const (
 )
 
 const epsilon = 1e-6
+const localhostPrefix = "localhost:"
 
 // CalcEntropy calculates the entropy of m.
 func calcEntropy(m map[any]int) float64 {
@@ -46,7 +47,7 @@ func calcEntropy(m map[any]int) float64 {
 func BenchmarkConsistentHashGet(b *testing.B) {
 	ch := NewConsistentHash()
 	for i := 0; i < keySize; i++ {
-		ch.Add("localhost:" + strconv.Itoa(i))
+		ch.Add(localhostPrefix + strconv.Itoa(i))
 	}
 
 	for i := 0; i < b.N; i++ {
@@ -62,7 +63,7 @@ func TestConsistentHash(t *testing.T) {
 	assert.Nil(t, val)
 
 	for i := 0; i < keySize; i++ {
-		ch.AddWithReplicas("localhost:"+strconv.Itoa(i), minReplicas<<1)
+		ch.AddWithReplicas(localhostPrefix+strconv.Itoa(i), minReplicas<<1)
 	}
 
 	keys := make(map[string]int)
@@ -125,7 +126,7 @@ func TestConsistentHashIncrementalTransfer(t *testing.T) {
 
 func TestConsistentHashTransferOnFailure(t *testing.T) {
 	index := 41
-	keys, newKeys := getKeysBeforeAndAfterFailure(t, "localhost:", index)
+	keys, newKeys := getKeysBeforeAndAfterFailure(t, localhostPrefix, index)
 
 	var transferred int
 
@@ -140,7 +141,7 @@ func TestConsistentHashTransferOnFailure(t *testing.T) {
 }
 
 func TestConsistentHashLeastTransferOnFailure(t *testing.T) {
-	prefix := "localhost:"
+	prefix := localhostPrefix
 	index := 41
 	keys, newKeys := getKeysBeforeAndAfterFailure(t, prefix, index)
 
