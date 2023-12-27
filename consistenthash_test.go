@@ -1,4 +1,4 @@
-package hash
+package microhash
 
 import (
 	"fmt"
@@ -44,19 +44,46 @@ func calcEntropy(m map[any]int) float64 {
 	return entropy / math.Log2(float64(len(m)))
 }
 
-func BenchmarkConsistentHashGet(b *testing.B) {
-	ch := NewConsistentHash()
+func BenchmarkGet(b *testing.B) {
+	ch := New()
 	for i := 0; i < keySize; i++ {
 		ch.Add(localhostPrefix + strconv.Itoa(i))
 	}
 
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		ch.Get(i)
+		for i := 0; i < keySize; i++ {
+			ch.Get(i)
+		}
+	}
+}
+
+func BenchmarkNew(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = New()
+	}
+}
+
+func BenchmarkAdd(b *testing.B) {
+	nodes := make([]string, 20)
+	for i := 0; i < keySize; i++ {
+		nodes = append(nodes, fmt.Sprintf("localhost:%s", strconv.Itoa(i)))
+	}
+
+	for i := 0; i < b.N; i++ {
+		ch := New()
+
+		b.ResetTimer()
+
+		for i := 0; i < keySize; i++ {
+			ch.Add(nodes[i])
+		}
 	}
 }
 
 func TestConsistentHash(t *testing.T) {
-	ch := NewCustomConsistentHash(0, nil)
+	ch := NewWithCustomHash(0, nil)
 	val, ok := ch.Get("any")
 
 	assert.False(t, ok)
@@ -86,7 +113,7 @@ func TestConsistentHash(t *testing.T) {
 func TestConsistentHashIncrementalTransfer(t *testing.T) {
 	prefix := "anything"
 	create := func() *ConsistentHash {
-		ch := NewConsistentHash()
+		ch := New()
 		for i := 0; i < keySize; i++ {
 			ch.Add(prefix + strconv.Itoa(i))
 		}
@@ -154,7 +181,7 @@ func TestConsistentHashLeastTransferOnFailure(t *testing.T) {
 }
 
 func TestConsistentHash_Remove(t *testing.T) {
-	ch := NewConsistentHash()
+	ch := New()
 
 	ch.Add("first")
 	ch.Add("second")
@@ -170,7 +197,7 @@ func TestConsistentHash_Remove(t *testing.T) {
 func TestConsistentHash_RemoveInterface(t *testing.T) {
 	const key = "any"
 
-	ch := NewConsistentHash()
+	ch := New()
 	node1 := newMockNode(key, 1)
 	node2 := newMockNode(key, 2)
 
@@ -184,7 +211,7 @@ func TestConsistentHash_RemoveInterface(t *testing.T) {
 }
 
 func getKeysBeforeAndAfterFailure(t *testing.T, prefix string, index int) (keys, newkeys map[int]string) {
-	ch := NewConsistentHash()
+	ch := New()
 	for i := 0; i < keySize; i++ {
 		ch.Add(prefix + strconv.Itoa(i))
 	}
